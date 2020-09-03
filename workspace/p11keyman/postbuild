@@ -1,0 +1,3 @@
+#!/bin/bash
+cd /home/pi/workspace/p11keyman
+sudo cp Debug/p11keyman /usr/bin

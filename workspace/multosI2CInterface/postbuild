@@ -1,0 +1,4 @@
+#!/bin/bash
+cd /home/pi/workspace/multosI2CInterface
+sudo cp Debug/multosI2CInterface /usr/bin
+sudo cp multosShared.h /usr/include

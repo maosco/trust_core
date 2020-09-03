@@ -1,0 +1,3 @@
+#!/bin/bash
+cd /home/pi/workspace/p11keygen
+sudo cp Debug/p11keygen /usr/bin

@@ -1,0 +1,3 @@
+#!/bin/bash
+cd /home/pi/workspace/deletem
+sudo cp Debug/deletem /usr/bin

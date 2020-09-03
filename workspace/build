@@ -1,0 +1,54 @@
+#!/bin/sh
+
+sudo chmod +x */postbuild
+
+cd multosio_i2c.so/Debug
+make clean
+make
+
+cd ../../multosI2CInterface/Debug
+make clean
+make
+
+cd ../../multosio.so/Debug
+make clean
+make
+
+cd ../../cryptoki.so/Debug
+make clean
+make
+
+cd ../../deletem/Debug
+make clean
+make
+
+cd ../../loadm/Debug
+make clean
+make
+
+cd ../../lsm/Debug
+make clean
+make
+
+cd ../../multosTLS_tc/Debug
+make clean
+make
+
+cd ../../p11keygen/Debug
+make clean
+make
+
+cd ../../p11keyman/Debug
+make clean
+make
+
+cd ../../p11pinman/Debug
+make clean
+make
+
+cd ../../pymultosTLS
+sudo chmod +x buildpymultosTLS
+./buildpymultosTLS
+
+cd ..
+

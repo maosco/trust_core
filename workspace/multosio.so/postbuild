@@ -1,0 +1,5 @@
+#!/bin/bash
+cd /home/pi/workspace/multosio.so
+sudo cp Debug/libmultosio.so /usr/lib
+sudo cp multosio.h /usr/include
+

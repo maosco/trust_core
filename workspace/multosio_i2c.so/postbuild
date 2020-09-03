@@ -1,0 +1,5 @@
+#!/bin/bash
+cd /home/pi/workspace/multosio_i2c.so
+sudo cp Debug/libmultosio_i2c.so /usr/lib/libmultosio.so
+sudo cp multosio.h /usr/include
+

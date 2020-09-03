@@ -1,0 +1,5 @@
+#!/bin/bash
+cd /home/pi/workspace/multosTLS_tc
+sudo cp Debug/libmultosTLS_tc.so /usr/lib/libmultosTLS.so
+sudo cp mtls.h /usr/include
+
