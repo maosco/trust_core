@@ -6,13 +6,16 @@ Obtaining PKCS#11 Header Files
 ==============================
 To obtain the header files for PKCS#11 2.40 (pkcs11.h, pkcs11f.h and pkcs11t.h) please follow these instructions
 
+```
 $ cd workspace/cryptoki.so
 $ wget http://docs.oasis-open.org/pkcs11/pkcs11-base/v2.40/errata01/os/include/pkcs11-v2.40/pkcs11.h
 $ wget http://docs.oasis-open.org/pkcs11/pkcs11-base/v2.40/errata01/os/include/pkcs11-v2.40/pkcs11t.h
 $ wget http://docs.oasis-open.org/pkcs11/pkcs11-base/v2.40/errata01/os/include/pkcs11-v2.40/pkcs11f.h
+```
 
 These platform specific macros must be included in pkcs11.h at line 184
 
+```
 // Platform specific macros - for Raspberry Pi
 #define CK_PTR *
 #define CK_DEFINE_FUNCTION(returnType, name) \
@@ -26,6 +29,7 @@ These platform specific macros must be included in pkcs11.h at line 184
 #ifndef NULL_PTR
 #define NULL_PTR 0
 #endif
+```
 
 Building Projects
 =================
@@ -34,9 +38,12 @@ The workspace/build script builds the projects in the required order and copies 
 Setting up Trust Core driver to start at boot
 =============================================
 The following commands should be executed with sudo
+
+```
 $ cp multos.sh /etc/init.d
 $ cd /etc/init.d
 $ chmod +x multos.sh
 $ update-rc.d multos.sh defaults
+```
 
 A reboot is required for this to take effect.
