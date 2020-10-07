@@ -30,11 +30,11 @@ cd ../../lsm/Debug
 make clean
 make
 
-cd ../../multosTLS_tc/Debug
+cd ../../p11keygen/Debug
 make clean
 make
 
-cd ../../p11keygen/Debug
+cd ../../multosTLS_tc/Debug
 make clean
 make
 

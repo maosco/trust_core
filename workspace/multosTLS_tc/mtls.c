@@ -28,6 +28,30 @@
 #include <stdarg.h>
 #include "tc_api.h"
 
+// ASN.1 values
+#define ASN1_SEQ 0x30
+#define ASN1_SET 0x31
+#define ASN1_INT 0x02
+#define ASN1_OID 0x06
+#define ASN1_PrintableString 0x13
+#define ASN1_UTF8String 0x0C
+#define ASN1_IA5String 0x16
+#define ASN1_NULL 0x05
+#define ASN1_ZERO 0xA0
+#define ASN1_BitString 0x03
+
+static unsigned char OID_CN[] = {0x55, 0x04, 0x06};
+static unsigned char OID_ST[] = {0x55, 0x04, 0x08};
+static unsigned char OID_LO[] = {0x55, 0x04, 0x07};
+static unsigned char OID_OR[] = {0x55, 0x04, 0x0A};
+static unsigned char OID_OU[] = {0x55, 0x04, 0x0B};
+static unsigned char OID_CM[] = {0x55, 0x04, 0x03};
+static unsigned char OID_EM[] = {0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x09, 0x01};
+
+static unsigned char ASN1_SEQ_SIGN_METHOD[] = {0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x0B, 0x05, 0x00};
+
+extern void base64Encode(unsigned char *data, unsigned short input_length,unsigned short *output_length,char *encoded_data);
+
 #define MAX_DATA_PAYLOAD 2992
 #define MAX_DIGEST_INPUT_BLOCK 2992
 #define MAX_LABEL_LEN	22
@@ -58,6 +82,24 @@ static unsigned char abSha256SigTemplate[] = {
 0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc // The actual hash goes here
 };
 
+// ASN.1 encoded public key
+typedef struct
+{
+	BYTE fixed1[33];
+	BYTE modulus[DEVICE_KEY_LEN];
+	BYTE fixed2;
+	BYTE expLen;
+	BYTE exponent[3];
+} pkcsPubKey256_t;
+
+pkcsPubKey256_t devicePubKey = {
+	{ 0x30,0x82,0x01,0x22,0x30,0x0d,0x06,0x09,0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01,0x05,0x00,0x03,0x82,0x01,0x0f,0x00,0x30,0x82,0x01,0x0a,0x02,0x82,0x01,0x01,0x00},
+	{ 0xbe,0x79,0xca,0x73,0x0a,0x73,0x0c,0xee,0x19,0xc1,0x19,0x1f,0x0d,0xcb,0xc7,0x03,0x9d,0xf3,0xbc,0xd1,0x37,0x9c,0x1e,0xaa,0x1a,0x63,0xe7,0xd9,0x09,0x0e,0x87,0x91,0x7d,0xbc,0x87,0xd8,0xb0,0x15,0x08,0x6b,0xeb,0x89,0x42,0x26,0xab,0xd1,0x0a,0x10,0x88,0x31,0x54,0x1c,0x1c,0xc2,0xc0,0x32,0xa0,0x80,0xdb,0x21,0x99,0x98,0xd8,0x72,0xaa,0xe3,0x49,0x9b,0x3b,0x05,0x49,0x58,0xea,0xff,0x35,0x1e,0x4d,0x41,0x2e,0x39,0x8f,0x3e,0xf2,0x07,0xa0,0xf3,0xdb,0x42,0x2d,0x37,0x76,0x6c,0xe7,0x76,0x19,0x7a,0x4e,0x8c,0xa8,0x39,0x58,0xbc,0xdc,0x12,0x70,0x92,0x72,0x65,0xd8,0x18,0xe9,0x29,0x13,0xed,0x7a,0xb9,0x2a,0x72,0x44,0x55,0xc3,0xc2,0x09,0x53,0x8b,0xbd,0x37,0xe5,0xa9,0x3b,0x02,0xbd,0x5f,0x59,0xf7,0x1b,0x63,0xc0,0x14,0x61,0x03,0xb8,0xe9,0x3c,0x0a,0xa7,0x4b,0xf1,0x3c,0xe3,0x4c,0xe5,0xc7,0xf4,0xa6,0x29,0x3d,0xb3,0x0e,0x09,0x4f,0xb3,0x91,0x96,0x40,0x95,0x78,0x79,0xe3,0x4f,0x88,0x7f,0xb3,0x55,0x4a,0xe9,0x74,0x40,0x23,0xb1,0x8a,0xfc,0x06,0x42,0xbf,0x39,0xee,0x09,0xcb,0x79,0xee,0x7d,0x1b,0x7a,0x43,0x96,0xd1,0xdb,0x4a,0x32,0x7c,0x54,0xad,0x37,0xfa,0xe3,0x7b,0x6a,0xd4,0x6f,0xe8,0x6d,0x62,0x95,0xf1,0x4f,0xb9,0x69,0x6d,0x61,0x64,0xa8,0x97,0x10,0xb4,0xe5,0x69,0x98,0x69,0x88,0x34,0x81,0xf4,0x97,0x12,0xc8,0x94,0x4c,0xe7,0x17,0x55,0x40,0x14,0x37,0x34,0x0b,0xc2,0x7a,0xf7,0x2d,0x60,0x6c,0xfc,0xf6,0x45,0x5d },
+	0x02,
+	0x03,
+	{ 0x01, 0x00, 0x01 }
+};
+
 // TLS variables
 static CK_OBJECT_HANDLE hPMS, hMS, hCWK, hSWK, hCMK, hSMK;
 #define CIPHERSUITE_MAX_BLOCK_LEN	64
@@ -84,6 +126,34 @@ static void outputMsg(FILE *channel, char *format, ...)
 	fprintf(channel, format, args);
 
 	va_end(args);
+}
+
+// Makes the assumption that SET elements will be < 128 bytes long
+static unsigned char asn1MakeSet(unsigned char *pOid, unsigned char bOidLen, unsigned char bType, char *pValue, unsigned char *pOut)
+{
+	int valueLen = strlen(pValue);
+	int l = 6 + bOidLen + valueLen;
+	int i;
+
+	if (l >= 128)
+		return 0;
+
+	i = 0;
+	pOut[i++] = ASN1_SET;
+	pOut[i++] = l;
+	pOut[i++] = ASN1_SEQ;
+	pOut[i++] = l-2;
+	pOut[i++] = ASN1_OID;
+	pOut[i++] = bOidLen;
+	memcpy(pOut+i,pOid,bOidLen);
+	i += bOidLen;
+	pOut[i++] = bType;
+	pOut[i++] = valueLen;
+	memcpy(pOut+i,pValue,valueLen);
+	i += valueLen;
+
+	// Return the length of the set
+	return (i);
 }
 
 static unsigned short mtlsSha256Init(void)
@@ -127,7 +197,7 @@ static unsigned short mtlsSha256Final(unsigned char *pOut)
 void mtlsVersion(unsigned char *major, unsigned char *minor)
 {
 	*major = 1;
-	*minor = 0;
+	*minor = 1;
 }
 
 int mtlsFinish(void)
@@ -954,8 +1024,254 @@ int mtlsGenerateRandom(unsigned short len, unsigned char *pOut)
 
 int mtlsGenerateRsaKeyPair(char *sFileName, char *sCountryName, char *sStateOrProvinceName, char *sLocalityName, char *sOrgName, char *sOrgUnit, char *sCommonName, char *sEmailAddress)
 {
-	outputMsg(stderr,"ERROR: mtlsGenerateRsaKeyPair() not supported. Use p11key application instead\n");
-	return 0;
+	char acPinData[TC_PIN_SIZE];
+	int i;
+
+	unsigned short wPubKeySeqLen = 0;
+
+	unsigned char abCNSet[128];
+	unsigned char bCNLen;
+	unsigned char abSTSet[128];
+	unsigned char bSTLen;
+	unsigned char abLOSet[128];
+	unsigned char bLOLen;
+	unsigned char abORSet[128];
+	unsigned char bORLen;
+	unsigned char abOUSet[128];
+	unsigned char bOULen;
+	unsigned char abCMSet[128];
+	unsigned char bCMLen;
+	unsigned char abEMSet[128];
+	unsigned char bEMLen;
+
+	unsigned char abInfoSeq[7*128 + 4];
+	unsigned short wInfoSeqLen = 0;
+
+	unsigned char abSigData[1024];
+	unsigned short wSigDataLen = 0;
+	unsigned char *pSignature;
+	unsigned short wSigLen = 0;
+
+	unsigned char abFullSeq[1024];
+	unsigned short wSeqLen = 0;
+
+	char sCertRequest[2048];
+	unsigned short wCertReqLen = 0;
+
+	FILE *fp;
+	unsigned short w;
+
+	// Generate the Certificate Information sequence from the input parameters
+	bCNLen = asn1MakeSet(OID_CN,sizeof(OID_CN),ASN1_PrintableString,sCountryName,abCNSet);
+	bSTLen = asn1MakeSet(OID_ST,sizeof(OID_ST),ASN1_UTF8String,sStateOrProvinceName,abSTSet);
+	bLOLen = asn1MakeSet(OID_LO,sizeof(OID_LO),ASN1_UTF8String,sLocalityName,abLOSet);
+	bORLen = asn1MakeSet(OID_OR,sizeof(OID_OR),ASN1_UTF8String,sOrgName,abORSet);
+	bOULen = asn1MakeSet(OID_OU,sizeof(OID_OU),ASN1_UTF8String,sOrgUnit,abOUSet);
+	bCMLen = asn1MakeSet(OID_CM,sizeof(OID_CM),ASN1_UTF8String,sCommonName,abCMSet);
+	bEMLen = asn1MakeSet(OID_EM,sizeof(OID_EM),ASN1_IA5String,sEmailAddress,abEMSet);
+	wInfoSeqLen = bCNLen + bSTLen + bLOLen + bORLen + bOULen + bCMLen + bEMLen;
+	if(wInfoSeqLen+4 > sizeof(abInfoSeq))
+	{
+		outputMsg(stderr,"ERROR: mtlsGenerateRsaKeyPair(): Certificate info sequence too long\n");
+		return 0;
+	}
+	w = 0;
+	abInfoSeq[w++] = ASN1_SEQ;
+	if(wInfoSeqLen < 128)
+	{
+		abInfoSeq[w++] = wInfoSeqLen;
+	}
+	else if (wInfoSeqLen < 256)
+	{
+		abInfoSeq[w++] = 0x81;
+		abInfoSeq[w++] = wInfoSeqLen;
+	}
+	else
+	{
+		abInfoSeq[w++] = 0x82;
+		abInfoSeq[w++] = wInfoSeqLen / 256;
+		abInfoSeq[w++] = wInfoSeqLen % 256;
+	}
+	memcpy(abInfoSeq+w,abCNSet,bCNLen);
+	w += bCNLen;
+	memcpy(abInfoSeq+w,abSTSet,bSTLen);
+	w += bSTLen;
+	memcpy(abInfoSeq+w,abLOSet,bLOLen);
+	w += bLOLen;
+	memcpy(abInfoSeq+w,abORSet,bORLen);
+	w += bORLen;
+	memcpy(abInfoSeq+w,abOUSet,bOULen);
+	w += bOULen;
+	memcpy(abInfoSeq+w,abCMSet,bCMLen);
+	w += bCMLen;
+	memcpy(abInfoSeq+w,abEMSet,bEMLen);
+	w += bEMLen;
+	wInfoSeqLen = w;
+
+	// Log in with key management pin
+	// Load the PIN from the file
+	memset(acPinData,0xFF,sizeof(acPinData));
+	fp = fopen("keyman_pin.txt","r");
+	if(fp == NULL)
+	{
+		outputMsg(stderr,"WARNING: mtlsGenerateRsaKeyPair(): Failed to open keyman_pin.txt. Using 1234\n");
+		acPinData[0] = '1';
+		acPinData[1] = '2';
+		acPinData[2] = '3';
+		acPinData[3] = '4';
+	}
+	else
+	{
+		fgets(acPinData,sizeof(acPinData),fp);
+		fclose(fp);
+
+		// Remove NULL and possible newline characters 0x0D and 0x0A
+		for(i = strlen(acPinData); i >= 0 && (acPinData[i] == 0x0A || acPinData[i] == 0x0D || acPinData[i] == 0x00); i--)
+			acPinData[i] = 0xFF;
+	}
+	if(!tcVerifyPIN2(TC_PINREF_K,(CK_BYTE*)acPinData))
+	{
+		outputMsg(stderr,"ERROR: mtlsGenerateRsaKeyPair(): Failed to log in with key management PIN\n");
+		return 0;
+	}
+
+	// Call MULTOS - get ASN.1 formatted public key
+	if(tcGenerateRsaKey(0x6100,DEVICE_KEY_LEN*8) != 0)
+	{
+		outputMsg(stderr,"ERROR: mtlsGenerateRsaKeyPair(): Key generation failed\n");
+		return 0;
+	}
+
+	wPubKeySeqLen = sizeof(devicePubKey);
+	if(tcReadRsaModulus(0x6100,((BYTE*)&devicePubKey)+33,sizeof(devicePubKey)-33) == 0)
+	{
+		outputMsg(stderr,"ERROR: mtlsGenerateRsaKeyPair(): Failed to get public key\n");
+		return 0;
+	}
+
+	// Combine the info and key sequences into the sequence to be signed
+	w = 0;
+	wSigDataLen = wInfoSeqLen + wPubKeySeqLen + 3 + 2;
+	if(wSigDataLen + 4 > sizeof(abSigData))
+	{
+		outputMsg(stderr,"ERROR: mtlsGenerateRsaKeyPair(): Signed sequence too long\n");
+		return 0;
+	}
+	abSigData[w++] = ASN1_SEQ;
+	if(wSigDataLen < 128)
+	{
+		abSigData[w++] = wSigDataLen;
+	}
+	else if (wSigDataLen < 256)
+	{
+		abSigData[w++] = 0x81;
+		abSigData[w++] = wSigDataLen;
+	}
+	else
+	{
+		abSigData[w++] = 0x82;
+		abSigData[w++] = wSigDataLen / 256;
+		abSigData[w++] = wSigDataLen % 256;
+	}
+	abSigData[w++] = ASN1_INT; //INTEGER 0 sequence element
+	abSigData[w++] = 1;
+	abSigData[w++] = 0;
+	memcpy(abSigData+w,abInfoSeq,wInfoSeqLen); // SEQUENCE - 7 elements
+	w += wInfoSeqLen;
+	memcpy(abSigData+w,&devicePubKey,wPubKeySeqLen); // SEQUENCE - 2 elements
+	w += wPubKeySeqLen;
+	abSigData[w++] = ASN1_ZERO;
+	abSigData[w++] = 0;
+	wSigDataLen = w;
+
+	// Sign the request sequence using MULTOS
+	wSigLen = mtlsRsaSignPKCS1_type1(abSigData,wSigDataLen,1,&pSignature);
+	if (wSigLen == 0)
+		return 0;
+
+	// Contruct full CSR sequence
+	wSeqLen = wSigDataLen + sizeof(ASN1_SEQ_SIGN_METHOD) + 5 + DEVICE_KEY_LEN;
+	if(wSeqLen + 4 > sizeof(abFullSeq))
+	{
+		outputMsg(stderr,"ERROR: mtlsGenerateRsaKeyPair(): CSR sequence too long\n");
+		free(pSignature);
+		return 0;
+	}
+	w = 0;
+	abFullSeq[w++] = ASN1_SEQ;
+	if(wSeqLen < 128)
+	{
+		abFullSeq[w++] = wSeqLen;
+	}
+	else if (wSeqLen < 256)
+	{
+		abFullSeq[w++] = 0x81;
+		abFullSeq[w++] = wSeqLen;
+	}
+	else
+	{
+		abFullSeq[w++] = 0x82;
+		abFullSeq[w++] = wSeqLen / 256;
+		abFullSeq[w++] = wSeqLen % 256;
+	}
+	memcpy(abFullSeq+w,abSigData,wSigDataLen);
+	w += wSigDataLen;
+	memcpy(abFullSeq+w,ASN1_SEQ_SIGN_METHOD,sizeof(ASN1_SEQ_SIGN_METHOD));
+	w += sizeof(ASN1_SEQ_SIGN_METHOD);
+	abFullSeq[w++] = ASN1_BitString;
+	abFullSeq[w++] = 0x82;
+	abFullSeq[w++] = (wSigLen+1) / 256;
+	abFullSeq[w++] = (wSigLen+1) % 256;
+	abFullSeq[w++] = 0x00; // Extra byte to ensure not negative signed number
+	memcpy(abFullSeq + w, pSignature, wSigLen);
+	w += wSigLen;
+	wSeqLen = w;
+	free(pSignature);
+
+	// Convert to Base64
+	memset(sCertRequest,0,sizeof(sCertRequest));
+	base64Encode(abFullSeq,wSeqLen,&wCertReqLen,sCertRequest);
+
+	// Output to PEM file with necessary header and trailer
+	fp = fopen(sFileName,"w");
+	if(!fp)
+	{
+		outputMsg(stderr,"ERROR: mtlsGenerateRsaKeyPair(): Failed to open PEM file %s\n",sFileName);
+		return 0;
+	}
+	fprintf(fp,"-----BEGIN CERTIFICATE REQUEST-----\n");
+	fprintf(fp,"%s",sCertRequest);
+	fprintf(fp,"\n-----END CERTIFICATE REQUEST-----\n");
+	fclose(fp);
+
+	// Revert to the user pin
+	// Load the PIN from the file
+	memset(acPinData,0xFF,sizeof(acPinData));
+	fp = fopen("user_pin.txt","r");
+	if(fp == NULL)
+	{
+		outputMsg(stderr,"WARNING: mtlsGenerateRsaKeyPair(): Failed to open user_pin.txt. Using 1234\n");
+		acPinData[0] = '1';
+		acPinData[1] = '2';
+		acPinData[2] = '3';
+		acPinData[3] = '4';
+	}
+	else
+	{
+		fgets(acPinData,sizeof(acPinData),fp);
+		fclose(fp);
+
+		// Remove NULL and possible newline characters 0x0D and 0x0A
+		for(i = strlen(acPinData); i >= 0 && (acPinData[i] == 0x0A || acPinData[i] == 0x0D || acPinData[i] == 0x00); i--)
+			acPinData[i] = 0xFF;
+	}
+	if(!tcVerifyPIN2(TC_PINREF_G,(CK_BYTE*)acPinData))
+	{
+		outputMsg(stderr,"ERROR: mtlsGenerateRsaKeyPair(): Failed to log in with user PIN\n");
+		return 0;
+	}
+
+	return 1; //OK
 }
 
 int mtlsECDSASign(unsigned char *pHash, unsigned short wHashLen, unsigned char *pSignature)
