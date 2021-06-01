@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, MAOSCO Ltd
+ * Copyright (c) 2020-2021, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -36,6 +36,7 @@ void logFunc(const char * fn)
 {
 	struct tm *timeinfo;
 	time_t rawtime;
+	FILE *fp;
 
 	// Comment following line to output a log of PKCS#11 functions being called
 	//return;
@@ -43,7 +44,11 @@ void logFunc(const char * fn)
 	time(&rawtime);
 	timeinfo = localtime (&rawtime);
 
-	FILE *fp = fopen("/tmp/pkcs11log.txt","a");
+#ifdef _WIN32
+	fp = fopen("c:\\temp\\pkcs11log.txt","a");
+#else
+	fp = fopen("/tmp/pkcs11log.txt","a");
+#endif
 	if (fp)
 	{
 		fprintf(fp,"%d:%d:%d %s\n",timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec, fn);

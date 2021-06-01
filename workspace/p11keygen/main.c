@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, MAOSCO Ltd
+ * Copyright (c) 2020-2021, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -25,7 +25,11 @@
 #include <stdio.h>
 #include <multosio.h>
 #include <pkcs11.h>
+#ifdef _WIN32
+#include<conio.h>
+#else
 #include <ncurses.h>
+#endif
 #include <ctype.h>
 #include "asn1.h"
 
@@ -149,6 +153,42 @@ char *pkcsErrorText(CK_RV code)
 	}
 }
 
+#ifdef _WIN32
+int enterSecret(CK_BYTE_PTR pData, CK_ULONG wLen, char *sPrompt)
+{
+	int i;
+	CK_BYTE b;
+
+    printf("%s\n",sPrompt);
+
+    for(i=0; i<wLen;i++)
+	{
+        b = _getch();
+        printf("*");
+
+		// Stop if enter key pressed
+        if(b == '\r')
+            break;
+		else
+			pData[i] = b;
+
+		// If backspace pressed
+        if(pData[i] == '\b')
+		{
+            if(i == 0)                
+				printf("\b \b");	
+            else if (i >= 1)
+			{
+                pData[i-1] = '\0';
+                i = i - 2;                
+				printf("\b \b\b \b");
+            }
+         }
+    }
+	printf("\n");
+	return i;
+}
+#else
 int enterSecret(CK_BYTE_PTR pData, CK_ULONG wLen, char *sPrompt)
 {
 	int i;
@@ -175,6 +215,7 @@ int enterSecret(CK_BYTE_PTR pData, CK_ULONG wLen, char *sPrompt)
 	endwin();
 	return i;
 }
+#endif
 
 int enterPIN(CK_BYTE_PTR pPIN, CK_ULONG wLen, char *sPrompt)
 {

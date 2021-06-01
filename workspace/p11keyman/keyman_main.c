@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, MAOSCO Ltd
+ * Copyright (c) 2020-2021, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -25,7 +25,11 @@
 #include <stdio.h>
 #include <multosio.h>
 #include <tc_api.h>
+#ifdef _WIN32
+#include<conio.h>
+#else
 #include <ncurses.h>
+#endif
 #include <ctype.h>
 
 typedef unsigned short WORD;
@@ -35,6 +39,42 @@ char sMSKey[] = "MS ";
 char sPMSKey[] = "PMS";
 char sTLSKey[] = "TLS";
 
+#ifdef _WIN32
+int enterSecret(CK_BYTE_PTR pData, CK_ULONG wLen, char *sPrompt)
+{
+	int i;
+	CK_BYTE b;
+
+    printf("%s\n",sPrompt);
+
+    for(i=0; i<wLen;i++)
+	{
+        b = _getch();
+        printf("*");
+
+		// Stop if enter key pressed
+        if(b == '\r')
+            break;
+		else
+			pData[i] = b;
+
+		// If backspace pressed
+        if(pData[i] == '\b')
+		{
+            if(i == 0)                
+				printf("\b \b");	
+            else if (i >= 1)
+			{
+                pData[i-1] = '\0';
+                i = i - 2;                
+				printf("\b \b\b \b");
+            }
+         }
+    }
+	printf("\n");
+	return i;
+}
+#else
 void enterSecret(CK_BYTE_PTR pData, CK_ULONG wLen, char *sPrompt)
 {
 	int i;
@@ -60,6 +100,7 @@ void enterSecret(CK_BYTE_PTR pData, CK_ULONG wLen, char *sPrompt)
 	printw("\n");
 	endwin();
 }
+#endif
 
 void enterPIN(CK_BYTE_PTR pPIN, CK_ULONG wLen, char *sPrompt)
 {
@@ -228,6 +269,9 @@ int main(int argc, char *argv[])
 	}
 
 	// Make sure the chip is ready to use
+#ifdef _WIN32
+	multosInit();
+#endif
 	multosReset();
 	tcSelectApp();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, MAOSCO Ltd
+ * Copyright (c) 2020-2021, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -25,8 +25,12 @@
 #include "tc_api.h"
 #include "common_defs.h"
 #include <stdio.h>
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <unistd.h>
 #include <pthread.h>		// For Mutex
+#endif
 #include <sys/types.h>
 
 // Global variable references
@@ -39,9 +43,40 @@ extern CK_USER_TYPE g_loggedInUser;
 static CK_BBOOL bInitialised = FALSE;
 
 // Lock for critical sections
+#ifdef _WIN32
+extern HANDLE processLock;
+#else
 extern pthread_mutex_t processLock;
+#endif
 
-
+#ifdef _WIN32
+#define COMMON_CHECKS() \
+	if(!g_bInitialised) \
+	{\
+		ReleaseMutex(processLock);\
+		return CKR_CRYPTOKI_NOT_INITIALIZED; \
+	}\
+	if(!g_bDeviceOK) \
+	{\
+		ReleaseMutex(processLock);\
+		return CKR_DEVICE_REMOVED; \
+	}\
+	if(hSession == 0 || hSession >= MAX_SESSIONS) \
+	{\
+		ReleaseMutex(processLock);\
+		return CKR_SESSION_HANDLE_INVALID; \
+	}\
+	if(!g_SessionIsOpen[hSession]) \
+	{\
+		ReleaseMutex(processLock);\
+		return CKR_SESSION_HANDLE_INVALID; \
+	}\
+	if(g_loggedInUser == NO_LOGGED_IN_USER) \
+	{\
+		ReleaseMutex(processLock);\
+		return CKR_USER_NOT_LOGGED_IN; \
+	}
+#else
 #define COMMON_CHECKS() \
 	if(!g_bInitialised) \
 	{\
@@ -68,7 +103,7 @@ extern pthread_mutex_t processLock;
 		pthread_mutex_unlock(&processLock);\
 		return CKR_USER_NOT_LOGGED_IN; \
 	}
-
+#endif
 /* C_SignInit initializes a signature (private key encryption)
  * operation, where the signature is (will be) an appendix to
  * the data, and plaintext cannot be recovered from the
@@ -85,7 +120,11 @@ CK_RV C_SignInit
 	CK_TLS_MAC_PARAMS_PTR pMacParams;
 	BYTE bAlgo;
 
+#ifdef _WIN32
+	WaitForSingleObject(processLock,INFINITE);
+#else
 	pthread_mutex_lock(&processLock);
+#endif
 
 	sprintf(msg,"%s (%d) tid=%d",__func__,(int)hSession,(int)gettid());
 	logFunc(msg);
@@ -191,7 +230,11 @@ CK_RV C_SignInit
 		status = CKR_KEY_HANDLE_INVALID;
 
 	if (status != CKR_OK)
+#ifdef _WIN32
+		ReleaseMutex(processLock);
+#else
 		pthread_mutex_unlock(&processLock);
+#endif
 	else
 		bInitialised = TRUE;
 	return status;
@@ -220,7 +263,11 @@ CK_RV C_Sign
 
 	if(!bInitialised)
 	{
+#ifdef _WIN32
+		ReleaseMutex(processLock);
+#else
 		pthread_mutex_unlock(&processLock);
+#endif
 		return CKR_OPERATION_NOT_INITIALIZED;
 	}
 
@@ -231,11 +278,13 @@ CK_RV C_Sign
 	if(status == 0)
 		logFunc("...OK");
 
-	//pthread_mutex_unlock(&processLock);
-
 	if(status == 2)
 	{
+#ifdef _WIN32
+		ReleaseMutex(processLock);
+#else
 		pthread_mutex_unlock(&processLock);
+#endif
 		return CKR_BUFFER_TOO_SMALL;
 	}
 
@@ -245,7 +294,11 @@ CK_RV C_Sign
 
 	// Anything else and init is required again
 	bInitialised = FALSE;
+#ifdef _WIN32
+	ReleaseMutex(processLock);
+#else
 	pthread_mutex_unlock(&processLock);
+#endif
 
 	if(status == 1)
 		return CKR_DATA_LEN_RANGE;

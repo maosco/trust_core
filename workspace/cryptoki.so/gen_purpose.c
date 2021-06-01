@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, MAOSCO Ltd
+ * Copyright (c) 2020-2021, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -26,8 +26,12 @@
 #include <string.h>
 #include <multosio.h>
 #include <stdio.h>
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <unistd.h>
 #include <pthread.h>		// For Mutex
+#endif
 #include <sys/types.h>
 
 // Global variables
@@ -41,7 +45,11 @@ CK_USER_TYPE g_loggedInUser = NO_LOGGED_IN_USER;
 CK_FUNCTION_LIST g_funclist;
 
 // Mutex variables
+#ifdef _WIN32
+HANDLE processLock;
+#else
 pthread_mutex_t processLock;
+#endif
 
 /* C_Initialize initializes the Cryptoki library. */
 CK_RV C_Initialize(
@@ -69,7 +77,11 @@ CK_RV C_Initialize(
 			logFunc("...CKF_LIBRARY_CANT_CREATE_OS_THREADS set");
 
 		// Can't support external mutex functions at the moment
+#ifdef _WIN32
+		if((args.flags & CKF_OS_LOCKING_OK) && args.LockMutex != NULL_PTR)
+#else
 		if((args.flags & CKF_OS_LOCKING_OK) && args.CreateMutex != NULL_PTR)
+#endif
 		{
 			logFunc("...can't lock");
 			return CKR_CANT_LOCK;
@@ -136,7 +148,11 @@ CK_RV C_Initialize(
 	}
 
 	// Create mutex needed for safe multi-thread access
+#ifdef _WIN32
+	processLock = CreateMutex(NULL,FALSE,L"ProcessLock");
+#else
 	pthread_mutex_init(&processLock,NULL);
+#endif
 	logFunc("...ok");
 
 	return CKR_OK;
@@ -165,7 +181,11 @@ CK_RV C_Finalize(
 		//multosDeselectCurrApplication();
 
 		// Dispose of mutex
+#ifdef _WIN32
+		CloseHandle(processLock);
+#else
 		pthread_mutex_destroy(&processLock);
+#endif
 		return CKR_OK;
 	}
 	else

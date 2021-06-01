@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, MAOSCO Ltd
+ * Copyright (c) 2020-2021, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -23,18 +23,28 @@
 #ifndef COMMON_DEFS_H_
 #define COMMON_DEFS_H_
 
+#ifdef _WIN32
+#define __func__ __FUNCTION__
+#define gettid GetCurrentThreadId
+#define getppid GetCurrentProcess
+#else
 #include <unistd.h>
 #include <sys/syscall.h>
 #define gettid() syscall(SYS_gettid)
+#endif
 
-#define LIB_MANUFACTURER_ID 	"MAOSCO Ltd"
+#define LIB_MANUFACTURER_ID 	"MULTOS Ltd"
+#ifdef _WIN32
+#define LIB_DESC				"multos-cryptoki.dll"
+#else
 #define LIB_DESC        		"libmultos-cryptoki.so"
+#endif
 #define LIBRARY_MAJOR_VERSION	1
 #define LIBRARY_MINOR_VERSION 	0
 
-#define SLOT_MANUFACTURER_ID 	"MAOSCO Ltd"
+#define SLOT_MANUFACTURER_ID 	"MULTOS Ltd"
 
-#define TOKEN_MANUFACTURER_ID 	"MAOSCO Ltd"
+#define TOKEN_MANUFACTURER_ID 	"MULTOS Ltd"
 #define TOKEN_MODEL_ID			"Trust Core"
 
 #define CRYPTOKI_MINOR_VERSION 40

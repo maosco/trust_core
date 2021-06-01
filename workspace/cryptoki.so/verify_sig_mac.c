@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, MAOSCO Ltd
+ * Copyright (c) 2020-2021, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -25,8 +25,12 @@
 #include "pkcs11.h"
 #include "tc_api.h"
 #include "common_defs.h"
+#ifndef _WIN32
 #include <unistd.h>
 #include <pthread.h>		// For Mutex
+#else
+#include <Windows.h>
+#endif
 
 // Local variables
 static BYTE bSigAlgo = 0;
@@ -38,9 +42,39 @@ extern CK_USER_TYPE g_loggedInUser;
 extern CK_BYTE g_SessionIsOpen[];
 
 // Lock for critical sections
+#ifdef _WIN32
+extern HANDLE processLock;
+#else
 extern pthread_mutex_t processLock;
-
-
+#endif
+#ifdef _WIN32
+#define COMMON_CHECKS() \
+	if(!g_bInitialised) \
+	{\
+		ReleaseMutex(processLock);\
+		return CKR_CRYPTOKI_NOT_INITIALIZED; \
+	}\
+	if(!g_bDeviceOK) \
+	{\
+		ReleaseMutex(processLock);\
+		return CKR_DEVICE_REMOVED; \
+	}\
+	if(hSession == 0 || hSession >= MAX_SESSIONS) \
+	{\
+		ReleaseMutex(processLock);\
+		return CKR_SESSION_HANDLE_INVALID; \
+	}\
+	if(!g_SessionIsOpen[hSession]) \
+	{\
+		ReleaseMutex(processLock);\
+		return CKR_SESSION_HANDLE_INVALID; \
+	}\
+	if(g_loggedInUser == NO_LOGGED_IN_USER) \
+	{\
+		ReleaseMutex(processLock);\
+		return CKR_USER_NOT_LOGGED_IN; \
+	}
+#else
 #define COMMON_CHECKS() \
 	if(!g_bInitialised) \
 	{\
@@ -67,6 +101,7 @@ extern pthread_mutex_t processLock;
 		pthread_mutex_unlock(&processLock);\
 		return CKR_USER_NOT_LOGGED_IN; \
 	}
+#endif
 
 // Local flags
 static CK_BBOOL bInitialised = FALSE;
@@ -84,7 +119,11 @@ CK_RV C_VerifyInit
 	WORD wFileSize;
 	CK_RV status = CKR_OK;
 
+#ifdef _WIN32
+	WaitForSingleObject(processLock,INFINITE);
+#else
 	pthread_mutex_lock(&processLock);
+#endif
 
 	logFunc(__func__);
 
@@ -143,7 +182,11 @@ CK_RV C_VerifyInit
 			break;
 	}
 	if (status != CKR_OK)
+#ifdef _WIN32
+		ReleaseMutex(processLock);
+#else
 		pthread_mutex_unlock(&processLock);
+#endif
 	else
 		bInitialised = TRUE;
 	return status;
@@ -175,7 +218,11 @@ CK_RV C_Verify
 
 	if(!bInitialised)
 	{
+#ifdef _WIN32
+		ReleaseMutex(processLock);
+#else
 		pthread_mutex_unlock(&processLock);
+#endif
 		return CKR_OPERATION_NOT_INITIALIZED;
 	}
 
@@ -231,7 +278,11 @@ CK_RV C_Verify
 
 	// Init is required again
 	bInitialised = FALSE;
+#ifdef _WIN32
+	ReleaseMutex(processLock);
+#else
 	pthread_mutex_unlock(&processLock);
+#endif
 
 	if(status == 1)
 		return CKR_SIGNATURE_LEN_RANGE;

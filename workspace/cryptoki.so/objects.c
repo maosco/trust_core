@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, MAOSCO Ltd
+ * Copyright (c) 2020-2021, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -26,8 +26,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <unistd.h>
 #include <pthread.h>		// For Mutex
+#endif
 #include <sys/types.h>
 
 // Global variable references
@@ -51,7 +55,11 @@ static CK_BYTE abCurve[16];
 static CK_ULONG ulCurveLen = 0;
 
 // Lock for critical sections
+#ifdef _WIN32
+extern HANDLE processLock;
+#else
 extern pthread_mutex_t processLock;
+#endif
 
 static void addObjectToSearchResult(CK_OBJECT_HANDLE hObject)
 {
@@ -351,6 +359,7 @@ CK_RV C_CreateObject
 					pTemplate[11].type != CKA_LABEL)
 					return CKR_TEMPLATE_INCONSISTENT;
 				}
+
 				// Work out how much space is needed to store object
 				size = (numTemplateAttributes-2) * (sizeof(CK_ATTRIBUTE_TYPE) + sizeof(CK_ULONG));
 				for(i = 2; i < numTemplateAttributes; i++)
@@ -536,7 +545,11 @@ CK_RV C_GetAttributeValue
 	logFunc(msg);
 
 	if(!bSearchInProgress)
+#ifdef _WIN32
+		WaitForSingleObject(processLock,INFINITE);
+#else
 		pthread_mutex_lock(&processLock);
+#endif
 
 	if(!g_bInitialised)
 		status =  CKR_CRYPTOKI_NOT_INITIALIZED;
@@ -553,7 +566,11 @@ CK_RV C_GetAttributeValue
 	if(status != CKR_OK)
 	{
 		if(!bSearchInProgress)
+#ifdef _WIN32
+			ReleaseMutex(processLock);
+#else
 			pthread_mutex_unlock(&processLock);
+#endif
 		return status;
 	}
 
@@ -805,7 +822,11 @@ CK_RV C_GetAttributeValue
 					if(!data)
 					{
 						if(!bSearchInProgress)
+#ifdef _WIN32
+							ReleaseMutex(processLock);
+#else
 							pthread_mutex_unlock(&processLock);
+#endif
 						return CKR_HOST_MEMORY;
 					}
 					bytesRead = tcReadCurrentEF(0,fileSize,data);
@@ -840,13 +861,21 @@ CK_RV C_GetAttributeValue
 		if(data)
 			free(data);
 		if(!bSearchInProgress)
+#ifdef _WIN32
+			ReleaseMutex(processLock);
+#else
 			pthread_mutex_unlock(&processLock);
+#endif
 		return CKR_OK;
 	}
 	else
 	{
 		if(!bSearchInProgress)
+#ifdef _WIN32
+			ReleaseMutex(processLock);
+#else
 			pthread_mutex_unlock(&processLock);
+#endif
 		return CKR_OBJECT_HANDLE_INVALID;
 	}
 }
@@ -1065,7 +1094,7 @@ static int compareCurrentEFToTemplate(CK_ATTRIBUTE_PTR  pTemplate, CK_ULONG ulCo
 				// TODO: This is the third time this block of code has appeared in one form or another. Refactor it?
 				offset = 0;
 				found = 0;
-				while( offset < bytesRead && !found )
+				while( offset >= 0 && offset < bytesRead && !found )
 				{
 					currAttributeType = readBigEndianULong(data + offset);
 					offset += sizeof (CK_ATTRIBUTE_TYPE);
@@ -1207,7 +1236,11 @@ CK_RV C_FindObjectsInit
 	CK_BYTE bIdx;
 	char msg[64];
 
+#ifdef _WIN32
+	WaitForSingleObject(processLock,INFINITE);
+#else
 	pthread_mutex_lock(&processLock);
+#endif
 
 	sprintf(msg,"%s (%d) tid=%d",__func__,(int)hSession,(int)gettid());
 	logFunc(msg);
@@ -1226,7 +1259,11 @@ CK_RV C_FindObjectsInit
 
 	if(status != CKR_OK)
 	{
+#ifdef _WIN32
+		ReleaseMutex(processLock);
+#else
 		pthread_mutex_unlock(&processLock);
+#endif
 		return status;
 	}
 
@@ -1402,7 +1439,11 @@ CK_RV C_FindObjects
 	}
 
 	if(status != CKR_OK)
+#ifdef _WIN32
+		ReleaseMutex(processLock);
+#else
 		pthread_mutex_unlock(&processLock);
+#endif
 
 	return status;
 }
@@ -1441,6 +1482,12 @@ CK_RV C_FindObjectsFinal
 		bSearchInProgress = FALSE;
 		ulNumMatchedObjects = 0;
 	}
+
+#ifdef _WIN32
+	ReleaseMutex(processLock);
+#else
 	pthread_mutex_unlock(&processLock);
+#endif
+
 	return status;
 }

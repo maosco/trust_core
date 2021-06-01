@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, MAOSCO Ltd
+ * Copyright (c) 2020-2021, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -26,8 +26,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <unistd.h>
 #include <pthread.h>		// For Mutex
+#endif
 #include <sys/types.h>
 
 // Global variable references
@@ -49,7 +53,11 @@ extern CK_USER_TYPE g_loggedInUser;
 		return CKR_SESSION_HANDLE_INVALID;	// Was CKR_SESSION_CLOSED
 
 // Lock for critical sections
+#ifdef _WIN32
+extern HANDLE processLock;
+#else
 extern pthread_mutex_t processLock;
+#endif
 
 CK_RV C_OpenSession
 (
@@ -64,7 +72,11 @@ CK_RV C_OpenSession
 	CK_RV status = CKR_OK;
 	int i;
 
+#ifdef _WIN32
+	WaitForSingleObject(processLock,INFINITE);
+#else
 	pthread_mutex_lock(&processLock);
+#endif
 
 	sprintf(msg,"%s tid=%d parent=%d",__func__, (int)gettid(),getppid());
 	logFunc(msg);
@@ -114,7 +126,11 @@ CK_RV C_OpenSession
 		sprintf(msg,"==> %d",i);
 		logFunc(msg);
 	}
+#ifdef _WIN32
+	ReleaseMutex(processLock);
+#else
 	pthread_mutex_unlock(&processLock);
+#endif
 	return status;
 }
 

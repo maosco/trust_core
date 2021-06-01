@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, MAOSCO Ltd
+ * Copyright (c) 2020-2021, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -134,7 +134,7 @@ extern "C" {
 
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
-typedef unsigned short DWORD;
+typedef unsigned long DWORD;
 
 #define TC_SECRET_KEY_LABEL_LEN 27
 typedef struct {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, MAOSCO Ltd
+ * Copyright (c) 2020-2021, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -29,7 +29,11 @@
 
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <Windows.h>
+#else
 #include <unistd.h>
+#endif
 #include <stdio.h>
 #include "pkcs11.h"
 #include "tc_api.h"
@@ -61,6 +65,7 @@ CK_RV C_GetSlotList(
 )
 {
 	char msg[64];
+	CK_ULONG slotCount = 1;
 
 	sprintf(msg,"%s tid=%d",__func__,(int)gettid());
 	logFunc(msg);
@@ -72,7 +77,6 @@ CK_RV C_GetSlotList(
 		return CKR_ARGUMENTS_BAD;
 
 	// If we need to check if a token is currently connected
-	CK_ULONG slotCount = 1;
 	if(tokenPresent && !g_bDeviceOK)
 		slotCount = 0;
 
