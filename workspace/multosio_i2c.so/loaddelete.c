@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, MAOSCO Ltd
+ * Copyright (c) 2020-2021, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -29,14 +29,15 @@
 #define maxDataSize 249
 #define APDU_TIMEOUT 10000
 
-extern unsigned short multosSendAPDU(unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2, unsigned char Lc, unsigned char Le, unsigned char *La, unsigned char case4, unsigned char *data, int dataBuffLen, unsigned long maxWait);
+extern unsigned short multosSendAPDU(unsigned char CLA, unsigned char INS, unsigned char P1, unsigned char P2, unsigned short Lc, unsigned short Le, unsigned short *La, unsigned char case4, unsigned char *data, int dataBuffLen, unsigned long maxWait);
 
 static int loadComponent(unsigned char INS, unsigned char *component, unsigned short complen)
 {
 	unsigned short offset = 0;
 	unsigned char chunksize;
 	unsigned short SW;
-	unsigned char P1,P2,La;
+	unsigned char P1,P2;
+	unsigned short La;
 
 	while(complen > 0)
 	{
@@ -64,7 +65,7 @@ static int loadComponent(unsigned char INS, unsigned char *component, unsigned s
 static int openMelApp(unsigned char *alc, unsigned short staticSize, unsigned short sigSize, unsigned short ktuSize)
 {
     unsigned char data[255];
-    unsigned char La;
+    unsigned short La;
     unsigned short SW;
     unsigned short offset = 26;
 
@@ -99,7 +100,8 @@ static int sendCertificate(unsigned char loadNotDelete, unsigned char *certifica
 	unsigned char INS = 24; // Default to delete
 	unsigned short offset = 0;
 	unsigned short SW;
-	unsigned char chunksize, La;
+	unsigned char chunksize;
+	unsigned short La;
 
 	if(loadNotDelete)
 		INS = 22;
