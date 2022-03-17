@@ -147,7 +147,7 @@ WORD parseFlags(char *s)
 	{
 		switch(s[i])
 		{
-			case 'E': wAttrs += TC_ATTR_ENCRYPT;break;
+			case 'E': wAttrs += (TC_ATTR_ENCRYPT+TC_ATTR_GENMAC);break;
 			case 'D': wAttrs += TC_ATTR_DECRYPT;break;
 			case 'W': wAttrs += TC_ATTR_WRAP;break;
 			case 'U': wAttrs += TC_ATTR_UNWRAP;break;
@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
 	// Version requires no chip access
 	if(strcmp(argv[1],"-v") == 0)
 	{
-		printf("Version: 0.1\n");
+		printf("Version: 0.2\n");
 		return 0;
 	}
 
