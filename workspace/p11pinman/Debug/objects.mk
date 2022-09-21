@@ -4,5 +4,5 @@
 
 USER_OBJS := /home/pi/workspace/cryptoki.so/Debug/tc_api.o
 
-LIBS := -lmultosio -lwiringPi -lncurses
+LIBS := -lmultosio -lpigpiod_if2 -lrt -lncurses
 
