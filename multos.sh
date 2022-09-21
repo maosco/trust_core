@@ -10,4 +10,6 @@
 # Description:       Enable service provided by daemon.
 ### END INIT INFO
 
+/usr/bin/pigpiod
+sleep 1
 /usr/bin/multosI2CInterface 1 > /tmp/multosio.log &
