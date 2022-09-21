@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -lmultosio -lwiringPi
+LIBS := -lmultosio -lpigpiod_if2 -lrt
 
