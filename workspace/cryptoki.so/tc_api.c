@@ -699,7 +699,7 @@ int tcGenerateRsaKey(WORD wEFId, WORD wModulusLenBits)
 		default: return 1; // Invalid length
 	}
 
-	SW12 = multosSendAPDU(0x80, TC_INS_GEN_KEY, TC_KEYTYPE_RSA, 0x00, 3, 0x00, &La, TC_CASE4_INS, (BYTE*)data, sizeof(data), 30000);
+	SW12 = multosSendAPDU(0x80, TC_INS_GEN_KEY, TC_KEYTYPE_RSA, 0x00, 3, 0x00, &La, TC_CASE4_INS, (BYTE*)data, sizeof(data), 60000);
 
 	if(SW12 != 0x9000)
 		return 2;
