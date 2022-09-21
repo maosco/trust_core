@@ -171,10 +171,10 @@ unsigned short multosSendAPDU(unsigned char CLA, unsigned char INS, unsigned cha
 	  fflush(fp);
 #endif
 
-	  if(i2cFd == -1)
+	  if(i2cFd < 0)
 		  multosInit();
 
-	  if(i2cFd == -1)
+	  if(i2cFd < 0)
 	  {
 #ifdef PRINT_APDU
 		  fprintf(fp,"=> 0000 FFFF\n");

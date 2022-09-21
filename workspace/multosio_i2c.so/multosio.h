@@ -48,7 +48,7 @@ extern "C" {
 // Library version that can be used by applications linking this library.
 #define MULTOSIO_VERSION_DESC	"libmultosio.so (single-thread)"
 #define MULTOSIO_VERSION_MAJOR	((unsigned char) 1)
-#define MULTOSIO_VERSION_MINOR ((unsigned char) 0)
+#define MULTOSIO_VERSION_MINOR ((unsigned char) 1)
 extern void multosHALInfo(char *desc, unsigned char *major, unsigned char *minor);
 
 /// Send APDU given by CLA, INS, P1, P2, Lc, Le and data
