@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2021, MULTOS Ltd
+ * Copyright (c) 2020-2022, MULTOS Ltd
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
  * following conditions are met:
@@ -20,7 +20,7 @@
  *
  */
 
-#include <python3.7m/Python.h>
+#include <Python.h>
 #include <mtls.h>	// MULTOS TLS Shared Library header file
 #include <string.h>
 
