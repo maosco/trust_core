@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -lmultos-cryptoki -lmultosio -lwiringPi -lncurses
+LIBS := -lmultos-cryptoki -lmultosio -lpigpiod_if2 -lrt -lncurses
 
