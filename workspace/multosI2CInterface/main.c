@@ -34,8 +34,12 @@
 #include <sys/types.h>		// Used for Shared Memory
 #include <sys/ipc.h>		// Used for Shared Memory
 #include <sys/shm.h>		// Used for Shared Memory
+#ifdef WIRINGPI
 #include <wiringPi.h>		// GPIO
 #include <wiringPiI2C.h>   // I2C
+#else
+#include <pigpiod_if2.h>
+#endif
 #include <unistd.h>		// For read and write
 
 #include "multosShared.h"
@@ -45,10 +49,26 @@
 #define LONG_DELAY			10000
 #define CLIENT_TIMEOUT		50000000
 
-// Physical pin numbering scheme
+
 #define MULTOS_SLAVE_DEVICE 0x5F
+
+#ifdef WIRINGPI
+// Physical pin numbering scheme
 #define MULTOS_RESET_PIN 11
 #define SCL_MONITOR_PIN 13
+#else
+// Broadcom GPIO PIN numbers
+// Use shell command "pinout" to get the numbers
+#define MULTOS_RESET_PIN 17
+#define SCL_MONITOR_PIN 27
+
+// Daemon connection ID
+int pi = 0;
+
+// Version of Raspbian
+int raspbian = 0;
+
+#endif
 
 static BYTE buffer[MULTOS_SHARED_MAX_DATA+20]; // Big enough to contain a full APDU formatted in P22 serial/i2c interface style
 static char hex[600];
@@ -72,6 +92,7 @@ static char msgBuf[256];
 // File Descriptor for I2C connection
 int i2cFd = -1;
 
+
 void traceMessage(char *msg)
 {
     time_t timer;
@@ -91,6 +112,7 @@ void traceMessage(char *msg)
 // This function is needed because the RPi doesn't support i2c clock stretching
 // The idea is to start the first read of a response which causes the slave to stretch
 // the clock until it has a reply ready. This function detects the clock going high again.
+#ifdef WIRINGPI
 // Normal reading can then resume.
 static int waitI2C(unsigned long maxWait)
 {
@@ -138,6 +160,100 @@ static int writeToI2C(unsigned char *buff, int len)
 	usleep(10);
 	return n;
 }
+
+int reset()
+{
+	unsigned char bufferSizeMessage[] = { MULTOS_MASTER_I2C_BUFSIZE_REG, 0x00, MASTER_I2C_BUF_SIZE };
+
+	// Do a reset - Falling edge on reset pin whilst MULTOS M5 pin 18 is held high
+	digitalWrite(MULTOS_RESET_PIN,LOW);
+	delay(10);
+	digitalWrite(MULTOS_RESET_PIN,HIGH);
+
+	// Wait for MULTOS to reboot
+	delay(20);
+
+	// Tell MULTOS how big this device's i2c message buffer is
+	writeToI2C(bufferSizeMessage,sizeof(bufferSizeMessage));
+
+	return(1);
+}
+#else
+int waitI2C(unsigned long maxWait)
+{
+	unsigned long waitTimeLeft = maxWait * 1000;
+	int val;
+
+	i2c_write_byte(pi,i2cFd,MULTOS_RESPONSE_TAG_REG);
+	val = i2c_read_byte(pi,i2cFd);
+	usleep(5);
+
+    while(gpio_read(pi,SCL_MONITOR_PIN) == 0 && waitTimeLeft > 0)
+    {
+	  usleep(100);
+	  waitTimeLeft -= 100;
+    }
+
+    if(waitTimeLeft > 0)
+    {
+		if (val < 0)
+		{
+			if (raspbian != 11)
+				val = i2c_read_byte(pi,i2cFd);
+
+			val = MULTOS_RESPONSE_TAG_LEN;
+		}
+    	return (val);
+    }
+
+    fprintf(stderr,"Timeout\n");
+    fflush(stderr);
+    return(-1);
+}
+
+int readI2C(unsigned char *reply, int len)
+{
+  int i = 0;
+
+  i = i2c_read_device(pi, i2cFd,(char*)reply,len);
+
+  if (i < 0)
+	  i = 0;
+
+  return (i);
+}
+
+// Send one block of data over I2C interface
+int writeToI2C(unsigned char *buff, int len)
+{
+	int n = i2c_write_device(pi,i2cFd,(char*)buff,len);
+	usleep(10);
+
+	// If write OK, return number of bytes
+	if(n == 0)
+		n = len;
+
+	return n;
+}
+
+int reset(void)
+{
+	  unsigned char bufferSizeMessage[] = { MULTOS_MASTER_I2C_BUFSIZE_REG, 0x00, MASTER_I2C_BUF_SIZE };
+
+	  // Do a reset - Falling edge on reset pin whilst MULTOS M5 pin 18 is held high
+	  gpio_write(pi,MULTOS_RESET_PIN, 0);
+	  usleep(10000);
+	  gpio_write(pi,MULTOS_RESET_PIN, 1);
+
+	  // Wait for MULTOS to reboot
+	  usleep(20000);
+
+	  // Tell MULTOS how big this device's i2c message buffer is
+	  writeToI2C(bufferSizeMessage,sizeof(bufferSizeMessage));
+
+	  return(1);
+}
+#endif
 
 // Take an APDU formatted in the MULTOS Command Mode format and send it over
 // the i2c interface, in blocks as needed
@@ -243,25 +359,6 @@ static int readI2CReply(unsigned char *buff, unsigned short bufLen, unsigned lon
   return nread;
 }
 
-
-int reset()
-{
-	unsigned char bufferSizeMessage[] = { MULTOS_MASTER_I2C_BUFSIZE_REG, 0x00, MASTER_I2C_BUF_SIZE };
-
-	// Do a reset - Falling edge on reset pin whilst MULTOS M5 pin 18 is held high
-	digitalWrite(MULTOS_RESET_PIN,LOW);
-	delay(10);
-	digitalWrite(MULTOS_RESET_PIN,HIGH);
-
-	// Wait for MULTOS to reboot
-	delay(20);
-
-	// Tell MULTOS how big this device's i2c message buffer is
-	writeToI2C(bufferSizeMessage,sizeof(bufferSizeMessage));
-
-	return(1);
-}
-
 int main(int argc, char *argv[])
 {
 	multosShared_t *sharedMem;
@@ -276,12 +373,14 @@ int main(int argc, char *argv[])
 	useconds_t clientTimeOut = CLIENT_TIMEOUT;
 	BYTE lastStatus = 255;
 	BYTE trace = 1;
+	FILE *fp;
+	char line[128];
 
 	if(argc == 2)
 	{
 		if(strcmp(argv[1],"-v") == 0)
 		{
-			printf("Version: 1.0\n");
+			printf("Version: 1.1\n");
 			return(0);
 		}
 		else if ( !isdigit(argv[1][0]) )
@@ -291,6 +390,16 @@ int main(int argc, char *argv[])
 			return(1);
 		}
 		trace = atoi(argv[1]);
+	}
+
+	// Get the Raspbian version
+	fp = fopen("/etc/issue","r");
+	if (fp)
+	{
+		fgets(line,sizeof(line),fp);
+		fclose(fp);
+		if (strncmp(line,"Raspbian GNU/Linux 11",21) == 0)
+			raspbian = 11;
 	}
 
 	// Create shared memory segment and attach to it
@@ -310,7 +419,7 @@ int main(int argc, char *argv[])
 	sharedMem->status = OFFLINE;
 	sharedMem->connectedPid = 0;
 	sharedMem->requestingPid = 0;
-
+#ifdef WIRINGPI
 	// Set up GPIO
 	if(wiringPiSetupPhys() == -1)
 	{
@@ -332,6 +441,30 @@ int main(int argc, char *argv[])
 
 	if(i2cFd < 0)
 		return (1);
+#else
+	// Set up GPIO using local daemon
+	pi = pigpio_start(NULL,NULL);
+	if(pi < 0)
+	{
+		fprintf(stderr,"Failed to to connect to pigpiod.\n");
+		return(0);
+	}
+
+	// The RPi doesn't support i2c clock stretching. This is a workaround to use another
+	// pin to monitor the clock in the function waitI2C()
+	set_mode(pi,SCL_MONITOR_PIN,PI_INPUT);
+
+	// Set up reset pin (falling edge triggers a reset on MULTOS)
+	set_mode(pi,MULTOS_RESET_PIN,PI_OUTPUT);
+	gpio_write(pi,MULTOS_RESET_PIN, 1);
+	sleep(1);
+
+	// Connect to I2C device
+	i2cFd = i2c_open(pi,1,MULTOS_SLAVE_DEVICE,0);
+
+	if(i2cFd < 0)
+		return (1);
+#endif
 
 	reset();
 
@@ -496,7 +629,7 @@ int main(int argc, char *argv[])
 				// Read reply
 				memset(buffer,0,sizeof(buffer));
 				nTotal = readI2CReply(buffer,sizeof(buffer),sharedMem->timeout);
-				if(nTotal == 0)
+				if(nTotal == 0 || nTotal < 5)
 				{
 					sharedMem->status = ERROR;
 					inErrorState = 1;
