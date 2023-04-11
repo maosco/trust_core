@@ -69,7 +69,7 @@ The PKCS#11 platform specific macros for Windows are:
 #endif
 ```
 
-The Windows directory contains the hardware abstraction layer required for WIN32. It makes use of this device http://www.robot-electronics.co.uk/htm/usb_iss_tech.htm. This is also the same interface used by the Digiseq P5 MULTOS dongle.
+The Windows directory contains the hardware abstraction layer required for WIN32. It makes use of this device http://www.robot-electronics.co.uk/htm/usb_iss_tech.htm. This is also the same interface used by MULTOS USB dongles.
 
 Notes:
 
