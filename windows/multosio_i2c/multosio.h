@@ -21,7 +21,7 @@
  */
 
 /** This is the Windows version that makes use of the USB-ISS module available from http://www.robot-electronics.co.uk/htm/usb_iss_tech.htm
-* It also supports the DigiSeq MULTOS P5 Dongle
+* It also supports MULTOS USB Dongles
 */
 #ifndef MULTOSIO_H_
 #define MULTOSIO_H_
